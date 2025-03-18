@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from .permissions import isManager,isActive
 from .serializers import (ChangePasswordSerializer, CustomTokenObtainPairSerializer,
                           CustomUserSerializer)
+from .models import (User,)
 
 class CustomUserCreate(APIView):
     """
@@ -87,4 +88,37 @@ class ChangePasswordView(APIView):
             user.set_password(serializer.validated_data['new_password'])
             user.save()
             return Response({"detail": "Password updated successfully"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ProfileView(APIView):
+    """
+    Endpoint to Get Profile Information
+    """
+    permission_classes = [IsAuthenticated,isActive]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Handles the POST request for getting user profile data.
+        """
+        user = User.objects.get(id=request.user.id)
+        serializer = CustomUserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request):
+        """
+        Handles updating the user profile.
+        """
+        user = User.objects.get(id=request.user.id)
+        user_type = request.data.get('user_type')
+        if user_type:
+            if user_type == 'admin':
+                return Response({'detail':'Really This is what you want to do ?'},status=status.HTTP_403_FORBIDDEN)
+        if 'email' in request.data:
+            return Response({'detail':'Email Updating Not Supported.'},status=status.HTTP_403_FORBIDDEN)
+        if 'user_name' in request.data:
+            return Response({'detail':'Username Updating Not Supported.'},status=status.HTTP_403_FORBIDDEN)
+        serializer = CustomUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
