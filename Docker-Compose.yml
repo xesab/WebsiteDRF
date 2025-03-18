@@ -1,0 +1,15 @@
+services:
+  web:
+    image: restro-online:production
+    ports:
+      - "8100:8000"
+    volumes:
+      - media:/app/media
+    env_file:
+      - .env
+    container_name: restro-online
+    restart: unless-stopped
+
+volumes:
+  media:
+    driver: local

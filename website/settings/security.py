@@ -9,12 +9,20 @@ X_FRAME_OPTIONS = 'DENY'
 CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_HTTPONLY = True
 
-CSP_DEFAULT_SRC = ("'self'",)
+# Example CSP directives
+CSP_DEFAULT_SRC = ("'self'",)  # Allow resources only from the same origin
+CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # Allow scripts only from the same origin
+CSP_STYLE_SRC = ("'self'", "https://fonts.googleapis.com", "'unsafe-inline'")  # Allow Google Fonts and inline styles
+CSP_IMG_SRC = ("'self'", "https://example.com")  # Allow images from self and example.com
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")  # Allow Google Fonts
+CSP_FRAME_SRC = ("'none'",)  # Disallow iframes
+
+# Report-only mode (useful for debugging CSP without breaking the site)
+CSP_REPORT_ONLY = False  # Set to True to only log violations without enforcing rules
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",  # Only allow trusted domains
 ]
-
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',  # Stronger hashing algorithm
@@ -47,7 +55,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
 
-    "ALGORITHM": "HS256",
+    "ALGORITHM": "HS512",
     "SIGNING_KEY": SECRET_KEY,
     "VERIFYING_KEY": "",  # Left empty because we are not using asymmetric signing
     "AUDIENCE": None,

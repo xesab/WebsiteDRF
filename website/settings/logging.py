@@ -1,49 +1,66 @@
-# from .base import *
-# import os
+from .base import *
+import os
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'standard': {
-#             'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
-#             'datefmt': '%Y-%m-%d %H:%M:%S',
-#         },
-#         'verbose': {
-#             'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(module)s: %(message)s',
-#             'datefmt': '%Y-%m-%d %H:%M:%S',
-#         },
-#     },
-#     'handlers': {
-#         'file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.handlers.RotatingFileHandler',  # Use rotating file handler
-#             'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
-#             'maxBytes': 1024 * 1024 * 5,  # 5 MB
-#             'backupCount': 5,  # Keep last 5 log files
-#             'formatter': 'standard',
-#     },
-#         'console': {
-#             'level': 'DEBUG',
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose',  # Use the 'verbose' formatter for console handler
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['file', 'console'],  # Use both file and console handlers
-#             'level': 'DEBUG' if DEBUG else 'WARNING',
-#             'propagate': True,
-#         },
-#         'django.request': {
-#             'handlers': ['file', 'console'],
-#             'level': 'ERROR',  # Log only errors for the request logger
-#             'propagate': False,
-#         },
-#         'django.security': {
-#             'handlers': ['file', 'console'],
-#             'level': 'WARNING',  # Log security warnings
-#             'propagate': False,
-#         },
-#     },
-# }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {filename} {funcName} {lineno} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {levelname} - {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'filters': ['require_debug_true'],
+            'formatter': 'simple',
+        },
+        'log_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'website.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 mb
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'website_error.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 mb
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'filters': ['require_debug_false'],
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django_project_api': {
+            'handlers': ['console', 'log_file', 'error_file', 'mail_admins'],
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['mail_admins', 'error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -25,12 +26,16 @@ class CustomUserCreate(APIView):
         Returns:
             A Response object with the saved user data and a status code.
         """
-        serializer = CustomUserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            if user:
-                json = serializer.data
-                return Response(json, status=status.HTTP_201_CREATED)
+        try:
+            serializer = CustomUserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                if user:
+                    json = serializer.data
+                    return Response(json, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({'message':e}, status=status.HTTP_403_FORBIDDEN)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
