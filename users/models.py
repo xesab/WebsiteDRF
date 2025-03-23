@@ -7,8 +7,9 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseU
 
 class CustomAccountManager(BaseUserManager):
 
-    def create_superuser(self, email, user_name, full_name, password, **other_fields):
-        user_type = self.model.USER_TYPE_ADMIN
+    def create_superuser(self, email, user_name, password, **other_fields):
+        user_type = 'admin'
+        full_name = 'admin'
         other_fields.setdefault('is_staff', True)
         other_fields.setdefault('is_superuser', True)
         other_fields.setdefault('is_active', True)
@@ -18,7 +19,7 @@ class CustomAccountManager(BaseUserManager):
         if other_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must be assigned to is_superuser=True.')
 
-        return self.create_user(email, user_name, full_name, user_type, password, **other_fields)
+        return self.create_user(email, user_name,full_name, user_type, password, **other_fields)
 
     def create_user(self, email, user_name, full_name, user_type, password, **other_fields):
 
@@ -34,9 +35,8 @@ class CustomAccountManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    USER_TYPE_ADMIN = 'admin'
     USER_TYPE_CHOICES = [
-        (USER_TYPE_ADMIN, 'admin'),
+        ('admin', 'admin'),
         ('staff', 'staff'),
         ('user', 'user'),
     ]
@@ -56,3 +56,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.user_name
+    
+    def is_active_user(self):
+        return self.is_active
+    
+class UserToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    last_activation_request = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.user.user_name
+    
+    def can_get_new_activation_link(self):
+        if self.last_activation_request is None:
+            return True
+        time_difference = timezone.now() - self.last_activation_request
+        if time_difference.minutes >= 30:
+            return True
+        return False

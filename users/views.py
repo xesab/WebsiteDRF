@@ -1,3 +1,4 @@
+import jwt
 from django.forms import ValidationError
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -5,11 +6,17 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.sites.shortcuts import get_current_site
+
+from website.settings.base import SECRET_KEY
 
 from .permissions import isManager,isActive
+from datetime import datetime, timedelta
 from .serializers import (ChangePasswordSerializer, CustomTokenObtainPairSerializer,
                           CustomUserSerializer)
-from .models import (User,)
+from .models import (User,UserToken)
 
 class CustomUserCreate(APIView):
     """
@@ -33,11 +40,62 @@ class CustomUserCreate(APIView):
                 user = serializer.save()
                 if user:
                     json = serializer.data
+                    sendActivationEmail(request,user,json['email'])
                     return Response(json, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response({'message':e}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def generate_activation_token(user):
+    """
+    Generates a JWT token with an expiration time for account activation.
+    """
+    if UserTokens.can_get_new_activation_link(user):
+        expiration_time = datetime.now() + timedelta(minutes=1)  # Token valid for 10 minutes
+        payload = {
+            "user_id": user.id,
+            "exp": expiration_time.timestamp(),  # Expiration time
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")  # Generate JWT token
+        return token
+
+def sendActivationEmail(request, user, to_email):
+    """
+    Sends an account activation email.
+    """
+    message = {
+        'subject': 'Activate Your Account',
+        'domain': get_current_site(request).domain,
+        'token': generate_activation_token(user),
+    }
+    print(message)
+    # send_email(to_email, message, 'activate_account_email.html')
+    
+class ActivateAccount(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        try:
+            # Decode the JWT token
+            decoded_data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            user_id = decoded_data.get("user_id")
+
+            # Check if user exists
+            user = User.objects.get(pk=user_id)
+            if user:
+                user.is_active = True
+                user.save()
+                return Response({'message': 'Account Activated Successfully'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'message': 'Invalid activation link'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except jwt.ExpiredSignatureError:
+            return Response({'message': 'Activation link has expired'}, status=status.HTTP_400_BAD_REQUEST)
+        except jwt.InvalidTokenError:
+            return Response({'message': 'Invalid activation link'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'message': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BlacklistTokenUpdateView(APIView):
@@ -65,6 +123,29 @@ class BlacklistTokenUpdateView(APIView):
         except Exception as e:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
+class login(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """
+        Handles the POST request for logging in a user.
+        """
+        if 'email' not in request.data:
+            return Response({'detail':'Email is required'},status=status.HTTP_400_BAD_REQUEST)
+        if 'password' not in request.data:
+            return Response({'detail':'Password is required'},status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.filter(email=request.data['email']).first()
+        if user:
+            if not user.is_active_user():
+                sendActivationEmail(request,user,user.email)
+                return Response({'detail':'Account is not activated'},status=status.HTTP_403_FORBIDDEN)
+            if not user.check_password(request.data['password']):
+                return Response({'detail':'Invalid password'},status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = CustomTokenObtainPairSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
