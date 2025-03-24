@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Activate Your Account</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+        }
+        .email-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        h2 {
+            color: #333;
+        }
+        p {
+            color: #555;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <h2>Activate Your Account</h2>
+        <p>Hi {{ user.full_name }},</p>
+        <p>Thank you for registering at {{ domain }}, with email {{user.email}} </p>
+        <p>Your account is almost ready, but first we need to verify your email address.</p>
+        <p>Click the button below to activate your account:</p>
+        <p>Note : This link will expire in 20 minutes.</p>
+        <a href="{{ activation_link }}" class="btn">Activate Account</a>
+        <p>If you did not request this, please ignore this email.</p>
+        <p>Regards,<br>The Team</p>
+    </div>
+</body>
+</html>

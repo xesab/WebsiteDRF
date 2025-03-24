@@ -1,5 +1,4 @@
 from django.db import models
-from django.forms import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
@@ -48,6 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)  # Default to False
 
+    last_activation_link = models.DateTimeField(null=True, blank=True)
 
     objects = CustomAccountManager()
 
@@ -60,17 +60,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_active_user(self):
         return self.is_active
     
-class UserToken(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    last_activation_request = models.DateTimeField(null=True, blank=True)
-
-    def __str__(self):
-        return self.user.user_name
-    
     def can_get_new_activation_link(self):
-        if self.last_activation_request is None:
+        if self.last_activation_link is None:
             return True
-        time_difference = timezone.now() - self.last_activation_request
-        if time_difference.minutes >= 30:
+        time_difference = timezone.now() - self.last_activation_link
+        if time_difference.total_seconds() // 60 >= 30:
             return True
         return False

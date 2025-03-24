@@ -6,17 +6,18 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
 from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.core.mail import send_mail
 
-from website.settings.base import SECRET_KEY
+
+from website.settings.base import SECRET_KEY, DEFAULT_FROM_EMAIL
 
 from .permissions import isManager,isActive
 from datetime import datetime, timedelta
 from .serializers import (ChangePasswordSerializer, CustomTokenObtainPairSerializer,
                           CustomUserSerializer)
-from .models import (User,UserToken)
+from .models import (User)
 
 class CustomUserCreate(APIView):
     """
@@ -51,26 +52,46 @@ def generate_activation_token(user):
     """
     Generates a JWT token with an expiration time for account activation.
     """
-    if UserTokens.can_get_new_activation_link(user):
-        expiration_time = datetime.now() + timedelta(minutes=1)  # Token valid for 10 minutes
-        payload = {
+    expiration_time = datetime.now() + timedelta(minutes=20)  # Token valid for 20 minutes
+    payload = {
             "user_id": user.id,
             "exp": expiration_time.timestamp(),  # Expiration time
-        }
-        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")  # Generate JWT token
-        return token
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")  # Generate JWT token
+    return token
 
 def sendActivationEmail(request, user, to_email):
     """
-    Sends an account activation email.
+    Sends an account activation email with an HTML template.
     """
-    message = {
-        'subject': 'Activate Your Account',
-        'domain': get_current_site(request).domain,
-        'token': generate_activation_token(user),
-    }
-    print(message)
-    # send_email(to_email, message, 'activate_account_email.html')
+    if user.can_get_new_activation_link():
+        domain = get_current_site(request).domain
+        protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
+        token = generate_activation_token(user)
+        activation_link = f"{protocol}://{domain}/activate/{token}"
+
+        html_message = render_to_string('activation_email.html', {
+            'user': user,
+            'activation_link': activation_link,
+            'domain': domain,
+        })
+
+        send_mail(
+            subject="Confirm your email",
+            message=f"Click the link to activate your account: {activation_link}",  # Fallback plain text
+            from_email=DEFAULT_FROM_EMAIL,
+            recipient_list=[to_email],
+            fail_silently=False,
+            html_message=html_message,  # HTML email support
+        )
+
+        # Update user's last activation link time
+        user.last_activation_link = datetime.now()
+        user.save()
+
+        return Response({'message': 'Activation link sent'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'message': 'Activation link already sent. Check mail and validate Email to continue'}, status=status.HTTP_400_BAD_REQUEST)
     
 class ActivateAccount(APIView):
     permission_classes = [AllowAny]
@@ -84,6 +105,8 @@ class ActivateAccount(APIView):
             # Check if user exists
             user = User.objects.get(pk=user_id)
             if user:
+                if user.is_active:
+                    return Response({'message': 'Account already activated'}, status=status.HTTP_400_BAD_REQUEST)
                 user.is_active = True
                 user.save()
                 return Response({'message': 'Account Activated Successfully'}, status=status.HTTP_200_OK)
@@ -137,8 +160,7 @@ class login(APIView):
         user = User.objects.filter(email=request.data['email']).first()
         if user:
             if not user.is_active_user():
-                sendActivationEmail(request,user,user.email)
-                return Response({'detail':'Account is not activated'},status=status.HTTP_403_FORBIDDEN)
+                return sendActivationEmail(request,user,user.email)
             if not user.check_password(request.data['password']):
                 return Response({'detail':'Invalid password'},status=status.HTTP_400_BAD_REQUEST)
         
@@ -168,7 +190,7 @@ class ChangePasswordView(APIView):
             user = request.user
             user.set_password(serializer.validated_data['new_password'])
             user.save()
-            return Response({"detail": "Password updated successfully"}, status=status.HTTP_200_OK)
+            return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfileView(APIView):
@@ -193,7 +215,7 @@ class ProfileView(APIView):
         user_type = request.data.get('user_type')
         if user_type:
             if user_type == 'admin':
-                return Response({'detail':'Really This is what you want to do ?'},status=status.HTTP_403_FORBIDDEN)
+                return Response({'message':'Really This is what you want to do ?'},status=status.HTTP_403_FORBIDDEN)
         if 'email' in request.data:
             return Response({'detail':'Email Updating Not Supported.'},status=status.HTTP_403_FORBIDDEN)
         if 'user_name' in request.data:
