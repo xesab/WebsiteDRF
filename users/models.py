@@ -3,7 +3,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 
-
 class CustomAccountManager(BaseUserManager):
 
     def create_superuser(self, email, user_name, password, **other_fields):
@@ -48,6 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=False)  # Default to False
 
     last_activation_link = models.DateTimeField(null=True, blank=True)
+    last_password_reset = models.DateTimeField(null=True, blank=True)
 
     objects = CustomAccountManager()
 
@@ -67,3 +67,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         if time_difference.total_seconds() // 60 >= 30:
             return True
         return False
+    def can_get_reset_password_link(self):
+        if self.last_password_reset is None:
+            return True
+        time_difference = timezone.now() - self.last_password_reset
+        if time_difference.total_seconds() // 60 >= 30:
+            return True
+        return False
+
+class GeneratedToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = 'Generated Token'
+        verbose_name_plural = 'Generated Tokens'
+    
+    def __str__(self):
+        return self.user.user_name
