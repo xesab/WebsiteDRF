@@ -15,7 +15,7 @@ class UserAdminConfig(UserAdmin):
                     'is_active', 'is_staff',)
     fieldsets = (
         ('Details', {'fields': ('email', 'user_name', 'full_name','user_type', 'password', 'start_date')}),
-        ('Timestamps', {'fields': ('last_password_reset','last_activation_link',)}),
+        ('Timestamps', {'fields': ('last_password_reset','last_activation_link','last_delete_request')}),
         ('Permissions', {'fields': ('is_staff', 'is_active' ,)}),
     )
     formfield_overrides = {

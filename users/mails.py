@@ -92,6 +92,38 @@ def sendResetPasswordEmail(request, user, to_email):
         return Response({'message': 'Reset password link sent'}, status=status.HTTP_200_OK)
     else:
         return Response({'message': 'Reset password link already sent. Check mail and validate Email to continue'}, status=status.HTTP_400_BAD_REQUEST)
+    
+def sendAccountDeletionEmail(request, user, to_email):
+    """
+    Sends an account deletion email with an HTML template.
+    """
+    if user.can_get_delete_account_link():
+        # Generate the account deletion link
+        domain = get_current_site(request).domain
+        protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
+        token = generate_activation_token(user)
+        account_deletion_link = f"{protocol}://{domain}/delete-account/{token}"
+
+        html_message = render_to_string('account_deletion_email.html', {
+            'user': user,
+            'account_deletion_link': account_deletion_link,
+            'domain': domain,
+            'token': token,
+        })
+
+        send_mail(
+            subject="Delete your account",
+            message=f"Click the link to delete your account: {account_deletion_link}",  # Fallback plain text
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to_email],
+            fail_silently=False,
+            html_message=html_message,  # HTML email support
+        )
+        user.last_delete_request = datetime.now()
+        user.save()
+        return Response({'message': 'Account deletion link sent'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'message': 'Account deletion link already sent. Check mail and validate Email to continue'}, status=status.HTTP_400_BAD_REQUEST)
 
 def decode_jwt_token(token):
     """

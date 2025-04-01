@@ -48,6 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     last_activation_link = models.DateTimeField(null=True, blank=True)
     last_password_reset = models.DateTimeField(null=True, blank=True)
+    last_delete_request = models.DateTimeField(null=True, blank=True)
 
     objects = CustomAccountManager()
 
@@ -71,6 +72,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.last_password_reset is None:
             return True
         time_difference = timezone.now() - self.last_password_reset
+        if time_difference.total_seconds() // 60 >= 30:
+            return True
+        return False
+    def can_get_delete_account_link(self):
+        if self.last_delete_request is None:
+            return True
+        time_difference = timezone.now() - self.last_delete_request
         if time_difference.total_seconds() // 60 >= 30:
             return True
         return False

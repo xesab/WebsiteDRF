@@ -12,7 +12,8 @@ from .serializers import (ChangePasswordSerializer, CustomTokenObtainPairSeriali
                           CustomUserSerializer)
 from .models import (User,GeneratedToken)
 
-from .mails import sendActivationEmail,sendResetPasswordEmail,decode_jwt_token
+from .mails import (sendActivationEmail,sendResetPasswordEmail,
+                    decode_jwt_token,sendAccountDeletionEmail)
 
 class CustomUserCreate(APIView):
     """
@@ -122,13 +123,7 @@ class login(APIView):
         if serializer.is_valid():
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class CustomTokenObtainPairView(TokenObtainPairView):
-    """
-    Endpoint for obtaining a token pair.
-    """
-    serializer_class = CustomTokenObtainPairSerializer
-
+   
 class ChangePasswordView(APIView):
     """
     An endpoint for changing password.
@@ -233,5 +228,55 @@ class ResetPassword(APIView):
             return Response({'message': 'Reset password link has expired'}, status=status.HTTP_400_BAD_REQUEST)
         except jwt.InvalidTokenError:
             return Response({'message': 'Invalid reset password link'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'message': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+        
+class RequestAccountDeletion(APIView):
+    """
+    Endpoint to handle account deletion
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Handle GET Request
+        """
+        user = request.user
+        return sendAccountDeletionEmail(request, user, user.email)
+
+class ConfirmAccountDeletion(APIView):
+    """
+    Endpoint to handle account deletion confirmation
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """
+        Handle POST Request
+        """
+        try:
+            # Decode JWT token
+            token = request.data.get('token')
+            if not token:
+                return Response({'message': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+            decoded_data = decode_jwt_token(token)
+            user = User.objects.get(pk=decoded_data.get("user_id"))
+
+            # Validate token existence
+            generated_token = GeneratedToken.objects.filter(user=user, token=token).first()
+            if not generated_token:
+                return Response({'message': 'Invalid account deletion link'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Delete user and token
+            user.delete()
+            generated_token.delete()
+
+            return Response({'message': 'Account Deleted Successfully'}, status=status.HTTP_200_OK)
+
+        except jwt.ExpiredSignatureError:
+            return Response({'message': 'Account deletion link has expired'}, status=status.HTTP_400_BAD_REQUEST)
+        except jwt.InvalidTokenError:
+            return Response({'message': 'Invalid account deletion link'}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
             return Response({'message': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
