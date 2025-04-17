@@ -4,12 +4,11 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 
 from .permissions import isActive
 from .serializers import (ChangePasswordSerializer, CustomTokenObtainPairSerializer,
-                          CustomUserSerializer)
+                          CustomUserSerializer, UserSerializer)
 from .models import (User,GeneratedToken)
 
 from .mails import (sendActivationEmail,sendResetPasswordEmail,
@@ -47,10 +46,16 @@ class CustomUserCreate(APIView):
 class ActivateAccount(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, token):
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'message': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            # Decode JWT token
+            # Decode JWT token            
             decoded_data = decode_jwt_token(token)
+            if decoded_data.get("for") != "activation":
+                return Response({'message': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(pk=decoded_data.get("user_id"))
 
             # Retrieve the token
@@ -153,7 +158,7 @@ class ProfileView(APIView):
         Handles the POST request for getting user profile data.
         """
         user = User.objects.get(id=request.user.id)
-        serializer = CustomUserSerializer(user)
+        serializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def patch(self, request):
@@ -169,7 +174,7 @@ class ProfileView(APIView):
             return Response({'detail':'Email Updating Not Supported.'},status=status.HTTP_403_FORBIDDEN)
         if 'user_name' in request.data:
             return Response({'detail':'Username Updating Not Supported.'},status=status.HTTP_403_FORBIDDEN)
-        serializer = CustomUserSerializer(user, data=request.data, partial=True)
+        serializer = UserSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -199,14 +204,18 @@ class ResetPassword(APIView):
 
     def post(self, request):
         token = request.data.get('token')
+        if not token:
+            return Response({'message': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
         password = request.data.get('password')
-
         if not password:
             return Response({'message': 'Password is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Decode the JWT token
             decoded_data = decode_jwt_token(token)
+            if decoded_data.get("for") != "reset_password":
+                return Response({'message': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(pk=decoded_data.get("user_id"))
 
             # Validate token existence
@@ -261,6 +270,8 @@ class ConfirmAccountDeletion(APIView):
             if not token:
                 return Response({'message': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
             decoded_data = decode_jwt_token(token)
+            if decoded_data.get("for") != "delete_account":
+                return Response({'message': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(pk=decoded_data.get("user_id"))
 
             # Validate token existence

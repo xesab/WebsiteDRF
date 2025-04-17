@@ -10,19 +10,21 @@ from datetime import datetime, timedelta
 
 from .models import GeneratedToken
 
-def generate_activation_token(user):
+def generate_activation_token(user, used_for : str): 
     """
     Generates a JWT token with an expiration time for account activation.
     """
     expiration_time = datetime.now() + timedelta(minutes=20)  # Token valid for 20 minutes
     payload = {
             "user_id": user.id,
-            "exp": expiration_time.timestamp(),  # Expiration time
+            "exp": expiration_time.timestamp(), # Expiration time
+            "for": used_for, # Purpose of the token
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ENCRYPT_ALGORITHM)  # Generate JWT token
+    
     # Delete any existing token for the user
     GeneratedToken.objects.filter(user=user).delete()
-    GeneratedToken.objects.create(user=user, token=token)
+    GeneratedToken.objects.create(user=user, token=token, used_for=used_for)  # Store the token in the database
     return token
 
 def sendActivationEmail(request, user, to_email):
@@ -32,7 +34,7 @@ def sendActivationEmail(request, user, to_email):
     if user.can_get_new_activation_link():
         domain = get_current_site(request).domain
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
-        token = generate_activation_token(user)
+        token = generate_activation_token(user,used_for="activation")
         activation_link = f"{protocol}://{domain}/activate/{token}"
 
         html_message = render_to_string('activation_email.html', {
@@ -66,7 +68,7 @@ def sendResetPasswordEmail(request, user, to_email):
     if user.can_get_reset_password_link():
         domain = get_current_site(request).domain
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
-        token = generate_activation_token(user)
+        token = generate_activation_token(user,used_for="reset_password")
         reset_password_link = f"{protocol}://{domain}/reset-password/{token}"
 
         html_message = render_to_string('reset_password_email.html', {
@@ -101,7 +103,7 @@ def sendAccountDeletionEmail(request, user, to_email):
         # Generate the account deletion link
         domain = get_current_site(request).domain
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
-        token = generate_activation_token(user)
+        token = generate_activation_token(user,used_for="delete_account")
         account_deletion_link = f"{protocol}://{domain}/delete-account/{token}"
 
         html_message = render_to_string('account_deletion_email.html', {

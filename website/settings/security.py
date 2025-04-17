@@ -1,5 +1,6 @@
 from .base import *
 from datetime import timedelta
+from csp.constants import SELF,NONE
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REFERRER_POLICY = 'same-origin'
@@ -10,15 +11,26 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_HTTPONLY = True
 
 # Example CSP directives
-CSP_DEFAULT_SRC = ("'self'",)  # Allow resources only from the same origin
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # Allow scripts only from the same origin
-CSP_STYLE_SRC = ("'self'", "https://fonts.googleapis.com", "'unsafe-inline'")  # Allow Google Fonts and inline styles
-CSP_IMG_SRC = ("'self'", "https://example.com")  # Allow images from self and example.com
-CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")  # Allow Google Fonts
-CSP_FRAME_SRC = ("'none'",)  # Disallow iframes
-
+# CSP_DEFAULT_SRC = ("'self'",)  # Allow resources only from the same origin
+# CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # Allow scripts only from the same origin
+# CSP_STYLE_SRC = ("'self'", "https://fonts.googleapis.com", "'unsafe-inline'")  # Allow Google Fonts and inline styles
+# CSP_IMG_SRC = ("'self'", "https://example.com")  # Allow images from self and example.com
+# CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")  # Allow Google Fonts
+# CSP_FRAME_SRC = ("'none'",)  # Disallow iframes
 # Report-only mode (useful for debugging CSP without breaking the site)
-CSP_REPORT_ONLY = False  # Set to True to only log violations without enforcing rules
+# CSP_REPORT_ONLY = False  # Set to True to only log violations without enforcing rules?
+
+
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': [SELF],
+        'font-src': [SELF, 'https://fonts.gstatic.com'],
+        'frame-src': [NONE],
+        'img-src': [SELF],
+        'script-src': [SELF, "'unsafe-inline'"],
+        'style-src': [SELF, 'https://fonts.googleapis.com', "'unsafe-inline'"],
+        },
+    }
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",  # Only allow trusted domains

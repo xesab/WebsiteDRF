@@ -68,6 +68,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
             validated_data['password'] = make_password(password)
         return super().create(validated_data)
     
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the User model.
+    """
+    class Meta:
+        model = User
+        fields = ('full_name', 'user_name','email','user_type',)
+        read_only_fields = ('email','user_type',)
+    
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 

@@ -86,6 +86,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 class GeneratedToken(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     token = models.CharField(max_length=255)
+    used_for = models.CharField(max_length=50, choices=[
+        ('activation', 'activation'),
+        ('reset_password', 'reset_password'),
+        ('delete_account', 'delete_account')
+    ])
 
     class Meta:
         verbose_name = 'Generated Token'
