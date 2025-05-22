@@ -4,6 +4,47 @@ This project is a Django REST Framework (DRF) based web application with custom 
 
 ---
 
+## Installation Guide
+
+1. **Clone the repository:**
+    ```bash
+    git clone https://github.com/xesab/WebsiteDRF
+    cd WebsiteDRF
+    ```
+
+2. **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    # On Windows:
+    venv\Scripts\activate
+    # On macOS/Linux:
+    source venv/bin/activate
+    ```
+
+3. **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. **Set up environment variables:**
+    - Copy `.env.example` to `.env` and update the values as needed.
+
+5. **Apply migrations:**
+    ```bash
+    python manage.py migrate
+    ```
+
+6. **Create a superuser (optional, for admin access):**
+    ```bash
+    python manage.py createsuperuser
+    ```
+
+7. **Run the development server:**
+    ```bash
+    uvicorn website.asgi:application --host 0.0.0.0 --port 8000 --reload
+    ```
+
+
 ## Authentication
 
 All endpoints use JWT authentication unless otherwise specified.
