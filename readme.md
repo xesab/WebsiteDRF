@@ -21,7 +21,7 @@ All endpoints use JWT authentication unless otherwise specified.
 
 ### Activate Account
 
-- **POST** `/users/activate/<token>`
+- **POST** `/users/activate`
 - Activates a user account using the token sent via email.
 - **Body:**
   - `token` (string, required)
@@ -174,7 +174,7 @@ All endpoints use JWT authentication unless otherwise specified.
 | Method | Endpoint                        | Description                        | Auth Required |
 |--------|---------------------------------|------------------------------------|--------------|
 | POST   | `/users/register`               | Register new user                  | No           |
-| POST   | `/users/activate/<token>`       | Activate account                   | No           |
+| POST   | `/users/activate`       | Activate account                   | No           |
 | POST   | `/users/login`                  | Login and get tokens               | No           |
 | POST   | `/users/get-access-token`       | Refresh JWT access token           | No           |
 | POST   | `/users/logout`                 | Blacklist refresh token            | Yes          |
