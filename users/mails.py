@@ -10,6 +10,11 @@ from datetime import datetime, timedelta
 
 from .models import GeneratedToken
 
+from decouple import config
+
+# Global domain variable, accessible inside functions
+DOMAIN = config('DOMAIN')
+
 def generate_activation_token(user, used_for : str): 
     """
     Generates a JWT token with an expiration time for account activation.
@@ -31,8 +36,9 @@ def sendActivationEmail(request, user, to_email):
     """
     Sends an account activation email with an HTML template.
     """
-    if user.can_get_new_activation_link():
-        domain = get_current_site(request).domain
+    if  user.can_get_new_activation_link():
+        domain = DOMAIN
+        # domain = get_current_site(request).domain
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
         token = generate_activation_token(user,used_for="activation")
         activation_link = f"{protocol}://{domain}/activate/{token}"
@@ -66,7 +72,7 @@ def sendResetPasswordEmail(request, user, to_email):
     Sends an account activation email with an HTML template.
     """
     if user.can_get_reset_password_link():
-        domain = get_current_site(request).domain
+        domain = DOMAIN
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
         token = generate_activation_token(user,used_for="reset_password")
         reset_password_link = f"{protocol}://{domain}/reset-password/{token}"
@@ -101,7 +107,7 @@ def sendAccountDeletionEmail(request, user, to_email):
     """
     if user.can_get_delete_account_link():
         # Generate the account deletion link
-        domain = get_current_site(request).domain
+        domain = DOMAIN
         protocol = "https" if request.is_secure() else "http"  # Auto-detect HTTP or HTTPS
         token = generate_activation_token(user,used_for="delete_account")
         account_deletion_link = f"{protocol}://{domain}/delete-account/{token}"
